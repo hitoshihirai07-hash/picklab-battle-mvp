@@ -75,7 +75,13 @@
     .muted.small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
     /* move info: 1行にして高さを削る */
-    .moveSelInfo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+    .moveSelInfo{margin-top:6px;font-size:13px;color:#1c2430;line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip}
+    .moveSelInfo b{font-size:14px}
+    .moveSelInfo .meta{display:block;color:#586579;font-weight:700;font-size:11px;margin-top:2px}
+
+    @media (max-width: 820px){
+      .grid2{grid-template-columns:1fr}
+    }
 </style>
 </head>
 <body>
