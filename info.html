@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ピックラボ・バトル</title>
+  <title>ピックラボ・資料</title>
   <style>
     :root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
     body{margin:0;background:#f6f7fb;color:#1c2430}
@@ -53,77 +53,35 @@
   </style>
 </head>
 <body>
-<header>
-  <h1>ピックラボ <span class="pill">対戦・選出シミュレーター</span></h1>
-  <div class="muted">3vs3 / 見せ合い無し / 交代はターン消費 / 状態異常なし / OHKO(命中30%)</div>
-</header>
+  <header>
+    <h1>ピックラボ <span class="pill">資料</span></h1>
+    <span class="muted">図鑑・わざ一覧（説明用）</span>
+  </header>
 
-<main>
-  <section id="setup" class="card">
-    <h2>1) チーム選択（自分）</h2>
-    <div class="muted">手持ちから3体選択 → 各体4技セット → 先発選択。相手(CPU)は内部で同様に選びます。</div>
-    <div class="sep"></div>
-    <h2>手持ち（選ぶ）</h2>
-    <div class="muted">ここで3体えらぶ。</div>
-    <div class="sep"></div>
-    <div id="roster" class="grid3"></div>
-
-    <div class="sep"></div>
-        <div class="sep"></div>
-    <h2>資料（別タブ）</h2>
-    <div class="muted">図鑑とわざ一覧は、別ページで確認できます（説明用）。</div>
-    <div class="sep"></div>
-    <a class="btn" href="./info.html" target="_blank" rel="noopener">図鑑・わざ一覧を開く</a>
-
-    <div class="row">
-      <div>
-        <h2>2) 技セット（選んだ3体）</h2>
-        <div id="movesets" class="grid3"></div>
-      </div>
-      <div>
-        <h2>3) 先発</h2>
-        <div id="leadPick" class="builderMon"></div>
-        <div class="sep"></div>
-        <div class="flex">
-          <button id="btnStart" class="btn btnPrimary" disabled>対戦開始</button>
-          <button id="btnRandom" class="btn">ランダムで選ぶ</button>
-          <span class="muted small">※PvPはこのMVPでは未対応（後でサーバー化）</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="battle" class="hidden">
-    <div class="row">
-      <div class="card">
-        <h2>相手（CPU）</h2>
-        <div id="oppPanel"></div>
-      </div>
-      <div class="card">
-        <h2>自分</h2>
-        <div id="mePanel"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>コマンド</h2>
-      <div id="cmdPanel"></div>
-      <div class="sep"></div>
+  <main>
+    <section class="card">
       <div class="flex">
-        <button id="btnNew" class="btn">最初から</button>
-        <button id="btnExportLog" class="btn">管理者ログを書き出し（JSON）</button>
-        <span class="muted small">※相手の控え・履歴は画面にも出しません</span>
+        <a class="btn" href="./index.html">対戦へ戻る</a>
+        <a class="btn btnPrimary" href="#dex">図鑑</a>
+        <a class="btn btnPrimary" href="#moves">わざ</a>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
-      <h2>ログ（表示用）</h2>
-      <div id="log" class="log mono"></div>
-    </div>
-  </section>
+    <section id="dex" class="card">
+      <h2>図鑑（一覧）</h2>
+      <div class="muted">検索・タイプ絞り。※ここからは選びません。</div>
+      <div class="sep"></div>
+      <div id="dexList"></div>
+    </section>
 
-</main>
+    <section id="moves" class="card">
+      <h2>わざ一覧（一覧）</h2>
+      <div class="muted">検索・タイプ絞り。※ここからは選びません。</div>
+      <div class="sep"></div>
+      <div id="moveIndex"></div>
+    </section>
+  </main>
 
-<script src="./app.js" defer></script>
+  <script src="./info.js" defer></script>
 </body>
 </html>

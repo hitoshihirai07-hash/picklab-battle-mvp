@@ -809,7 +809,7 @@ function renderMovesets(){
       sel.innerHTML = `<option value="">わざ${i+1}：みせってい</option>` + pool.map(mv=>{
         const tag = mv.flags.includes("OHKO") ? "OHKO(30%)" : `威力${mv.power}`;
         const meta = `${DB.typeName[mv.type]} / ${tag} / 命中${mv.accuracy}% / PP${mv.pp}`;
-        return `<option value="${mv.id}">${mv.name}（${meta}）</option>`;
+        return `<option value="${mv.move_id}">${mv.name}（${meta}）</option>`;
       }).join("");
       sel.value = set[i] || "";
       sel.addEventListener("change", ()=>{
