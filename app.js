@@ -87,6 +87,7 @@ function normalizeMon(m){
     atk: Number(m.atk),
     def: Number(m.def),
     spd: Number(m.spd),
+    img: `./assets/mon/${m.id}.svg`,
   };
 }
 
@@ -138,24 +139,27 @@ function applyStage(base, stage){
   return base * STAGE_MULT[s];
 }
 
-function makeFighter(mon, moveIds){
+function makeFighter(mon, moveIds, tuning){
+  const t = tuning || {hp:0, atk:0, def:0, spd:0};
   return {
     mon_id: mon.id,
     name: mon.name,
     type1: mon.type1,
     type2: mon.type2,
-    hpMax: mon.hp,
-    hpNow: mon.hp,
-    atkBase: mon.atk,
-    defBase: mon.def,
-    spdBase: mon.spd,
+    img: mon.img || (`./assets/mon/${mon.id}.svg`),
+    hpMax: mon.hp + (t.hp||0),
+    hpNow: mon.hp + (t.hp||0),
+    atkBase: mon.atk + (t.atk||0),
+    defBase: mon.def + (t.def||0),
+    spdBase: mon.spd + (t.spd||0),
     atkStage: 0,
     defStage: 0,
     spdStage: 0,
     guardActive: false,
     lastDamageTakenThisTurn: 0,
     moves4: moveIds.slice(0,4),
-    pp: Object.fromEntries(moveIds.slice(0,4).map(id => [id, null]))
+    pp: Object.fromEntries(moveIds.slice(0,4).map(id => [id, null])),
+    tuning: {hp:(t.hp||0), atk:(t.atk||0), def:(t.def||0), spd:(t.spd||0)}
   };
 }
 
@@ -320,7 +324,7 @@ function useMove(state, user, foe, move){
   const d = foe.active();
 
   if (move.flags.includes("BUFF") || move.flags.includes("DEBUFF") || move.flags.includes("HEAL") || move.flags.includes("GUARD")){
-    events.push({type:"use", side:user.id, name:a.name, move: move.name});
+    events.push({type:"use", side:user.id, name:a.name, move: move.name, moveType: move.type, flags: move.flags});
     if (!rollHit(state, move)){ events.push({type:"miss", side:user.id}); return events; }
 
     if (move.flags.includes("GUARD")){
@@ -356,7 +360,7 @@ function useMove(state, user, foe, move){
   }
 
   if (move.flags.includes("COUNTER")){
-    events.push({type:"use", side:user.id, name:a.name, move: move.name});
+    events.push({type:"use", side:user.id, name:a.name, move: move.name, moveType: move.type, flags: move.flags});
     if (!rollHit(state, move)){ events.push({type:"miss", side:user.id}); return events; }
     const ret = /RET:([0-9.]+)/.exec(move.effect);
     const mult = ret ? Number(ret[1]) : 1.5;
@@ -369,7 +373,7 @@ function useMove(state, user, foe, move){
   }
 
   if (move.flags.includes("OHKO")){
-    events.push({type:"use", side:user.id, name:a.name, move: move.name});
+    events.push({type:"use", side:user.id, name:a.name, move: move.name, moveType: move.type, flags: move.flags});
     if (d.guardActive){ events.push({type:"msg", text:`${d.name}はガード中！ 一撃必殺は無効。`}); return events; }
     if (!rollHit(state, move)){ events.push({type:"miss", side:user.id}); return events; }
     d.hpNow = 0;
@@ -378,7 +382,7 @@ function useMove(state, user, foe, move){
     return events;
   }
 
-  events.push({type:"use", side:user.id, name:a.name, move: move.name});
+  events.push({type:"use", side:user.id, name:a.name, move: move.name, moveType: move.type, flags: move.flags});
   if (!rollHit(state, move)){ events.push({type:"miss", side:user.id}); return events; }
 
   const stab = (move.type !== "NONE" && (move.type === a.type1 || move.type === a.type2)) ? STAB : 1.0;
@@ -539,7 +543,7 @@ const elCmd = document.getElementById("cmdPanel");
 const elLog = document.getElementById("log");
 
 let DB = null;
-let buildState = { picked: [], movesets: {}, lead: null };
+let buildState = { picked: [], movesets: {}, tuning: {}, lead: null };
 let game = null;
 let adminLog = null;
 
@@ -548,6 +552,17 @@ function logLine(s){
   div.textContent = s;
   elLog.appendChild(div);
   elLog.scrollTop = elLog.scrollHeight;
+}
+
+function flashPanel(which, type){
+  const el = (which === "p1") ? document.getElementById("mePanel") : document.getElementById("oppPanel");
+  if (!el) return;
+  el.classList.remove("fxFlash");
+  const colorMap = {NONE:"#A7B0BF",FIRE:"#FF6B4A",WATER:"#3BA7FF",WOOD:"#35C66A",THUNDER:"#FFCC33",ICE:"#66D7FF",ROCK:"#C7A36A",WIND:"#7EE0C4",DARK:"#7A6CFF"};
+  const c = colorMap[type] || "#2b5cff";
+  el.style.boxShadow = `0 0 0 6px ${c}33`;
+  el.classList.add("fxFlash");
+  setTimeout(()=>{ el.classList.remove("fxFlash"); el.style.boxShadow=""; }, 380);
 }
 function clearLog(){ elLog.innerHTML = ""; }
 
@@ -559,17 +574,22 @@ function renderRoster(){
     wrap.className = "builderMon";
     const checked = buildState.picked.includes(m.id);
     wrap.innerHTML = `
-      <div class="monLine">
-        <div>
-          <div class="monName">${m.name}</div>
-          <div class="muted small">${DB.typeName[m.type1]}${m.type2 && m.type2!=="NONE" ? " / "+DB.typeName[m.type2] : ""}</div>
-        </div>
-        <div class="right">
-          <span class="badge mono">${m.hp+m.atk+m.def+m.spd}</span>
-          <input type="checkbox" ${checked ? "checked":""} />
+      <div class="imgRow">
+        <img class="monImg" src="./assets/mon/${m.id}.svg" alt="${m.name}">
+        <div style="flex:1">
+          <div class="monLine">
+            <div>
+              <div class="monName">${m.name}</div>
+              <div class="muted small">${DB.typeName[m.type1]}${m.type2 && m.type2!=="NONE" ? " / "+DB.typeName[m.type2] : ""}</div>
+            </div>
+            <div class="right">
+              <span class="badge mono">${m.hp+m.atk+m.def+m.spd}</span>
+              <input type="checkbox" ${checked ? "checked":""} />
+            </div>
+          </div>
+          <div class="muted small">HP ${m.hp} / ATK ${m.atk} / DEF ${m.def} / SPD ${m.spd}</div>
         </div>
       </div>
-      <div class="muted small">HP ${m.hp} / ATK ${m.atk} / DEF ${m.def} / SPD ${m.spd}</div>
     `;
     const cb = wrap.querySelector("input[type=checkbox]");
     cb.addEventListener("change", ()=>{
@@ -599,13 +619,52 @@ function renderMovesets(){
     const box = document.createElement("div");
     box.className = "builderMon";
     box.innerHTML = `
-      <div class="monName">${mon.name}</div>
-      <div class="muted small">${DB.typeName[mon.type1]}${mon.type2 && mon.type2!=="NONE" ? " / "+DB.typeName[mon.type2] : ""}</div>
+      <div class="imgRow">
+        <img class="monImg" src="./assets/mon/${mon.id}.svg" alt="${mon.name}">
+        <div style="flex:1">
+          <div class="monName">${mon.name}</div>
+          <div class="muted small">${DB.typeName[mon.type1]}${mon.type2 && mon.type2!=="NONE" ? " / "+DB.typeName[mon.type2] : ""}</div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="muted small"><b>調整ポイント（努力値の代わり）</b>：合計80まで / 1つ40まで（各+1）</div>
+      <div class="grid2" style="margin-top:8px" id="tp-${monId}">
+        <div><label>HP</label><input type="number" min="0" max="40" step="1" data-tp="hp" value="0"></div>
+        <div><label>ATK</label><input type="number" min="0" max="40" step="1" data-tp="atk" value="0"></div>
+        <div><label>DEF</label><input type="number" min="0" max="40" step="1" data-tp="def" value="0"></div>
+        <div><label>SPD</label><input type="number" min="0" max="40" step="1" data-tp="spd" value="0"></div>
+      </div>
+      <div class="muted small" id="tpRem-${monId}">残り：80</div>
       <div class="sep"></div>
       <div class="grid2" id="ms-${monId}"></div>
       <div class="muted small" style="margin-top:8px">※OHKOはチーム1個まで</div>
     `;
     const grid = box.querySelector(`#ms-${monId}`);
+
+    // 調整ポイント
+    if (!buildState.tuning[monId]) buildState.tuning[monId] = {hp:0, atk:0, def:0, spd:0};
+    const tpBox = box.querySelector(`#tp-${monId}`);
+    const tpRem = box.querySelector(`#tpRem-${monId}`);
+    const inputs = [...tpBox.querySelectorAll('input[data-tp]')];
+    const refreshTP = ()=>{
+      const t = buildState.tuning[monId];
+      const used = (t.hp||0)+(t.atk||0)+(t.def||0)+(t.spd||0);
+      const rem = 80 - used;
+      tpRem.textContent = `残り：${rem}`;
+      tpRem.style.color = (rem < 0) ? "#d11f3a" : "#586579";
+      validateStart();
+    };
+    inputs.forEach(inp=>{
+      const k = inp.dataset.tp;
+      inp.value = buildState.tuning[monId][k] ?? 0;
+      inp.addEventListener('input', ()=>{
+        const v = Math.max(0, Math.min(40, Number(inp.value)||0));
+        buildState.tuning[monId][k] = v;
+        inp.value = v;
+        refreshTP();
+      });
+    });
+    refreshTP();
 
     for(let i=0;i<4;i++){
       const sel = document.createElement("select");
@@ -660,6 +719,10 @@ function validateStart(){
   if (buildState.picked.length !== 3) { btnStart.disabled = true; return; }
   if (!buildState.lead) { btnStart.disabled = true; return; }
   for (const monId of buildState.picked){
+    const t = buildState.tuning[monId] || {hp:0,atk:0,def:0,spd:0};
+    const used = (t.hp||0)+(t.atk||0)+(t.def||0)+(t.spd||0);
+    if (used > 80) { btnStart.disabled = true; return; }
+
     const set = buildState.movesets[monId] ?? [];
     if (set.length < 4 || set.some(x=>!x)) { btnStart.disabled = true; return; }
   }
@@ -671,6 +734,7 @@ function randomPick(){
   const all = Object.keys(DB.monMap);
   buildState.picked = [];
   buildState.movesets = {};
+  buildState.tuning = {};
   buildState.lead = null;
 
   const pool = all.slice();
@@ -699,6 +763,16 @@ function randomPick(){
       if (picks.length < i+1 && ls.length) picks.push(ls.pop());
     }
     buildState.movesets[monId] = picks.slice(0,4);
+    // 調整ポイントは軽めにランダム（合計0〜40）
+    const totalTP = Math.floor(Math.random()*41);
+    const keys = ['hp','atk','def','spd'];
+    const t = {hp:0,atk:0,def:0,spd:0};
+    let rem = totalTP;
+    while(rem>0){
+      const k = keys[Math.floor(Math.random()*keys.length)];
+      if (t[k] < 40) { t[k]++; rem--; }
+    }
+    buildState.tuning[monId] = t;
   }
   buildState.lead = buildState.picked[0];
 
@@ -708,8 +782,8 @@ function randomPick(){
   validateStart();
 }
 
-function buildTeam(sideId, sideName, picked, movesets, leadId, moveMap, monMap){
-  const fighters = picked.map(monId => makeFighter(monMap[monId], movesets[monId]));
+function buildTeam(sideId, sideName, picked, movesets, tuningMap, leadId, moveMap, monMap){
+  const fighters = picked.map(monId => makeFighter(monMap[monId], movesets[monId], (tuningMap && tuningMap[monId]) ? tuningMap[monId] : null));
   for (const f of fighters) initPP(f, moveMap);
   const side = makeSide(sideId, sideName, fighters);
   const leadIdx = fighters.findIndex(f => f.mon_id === leadId);
@@ -749,7 +823,33 @@ function buildCPU(DB){
     movesets[monId] = picks.slice(0,4);
   }
   const leadId = picked[Math.floor(rng()*picked.length)];
-  return {picked, movesets, leadId};
+    // CPUの調整ポイント（合計60、偏りは少しだけ）
+  const tuning = {};
+  for (const monId of picked){
+    const m = DB.monMap[monId];
+    const t = {hp:0, atk:0, def:0, spd:0};
+    let rem = 60;
+    const weights = {
+      hp: (m.hp >= 180 ? 3 : 1),
+      def: (m.def >= 150 ? 3 : 1),
+      atk: (m.atk >= 160 ? 3 : 1),
+      spd: (m.spd >= 160 ? 3 : 1),
+    };
+    const keys = ["hp","atk","def","spd"];
+    const bag = [];
+    keys.forEach(k=>{ for(let i=0;i<weights[k];i++) bag.push(k); });
+    while(rem>0){
+      const k = bag[Math.floor(Math.random()*bag.length)];
+      if (t[k] < 30){ t[k]++; rem--; }
+      else {
+        const kk = keys[Math.floor(Math.random()*keys.length)];
+        if (t[kk] < 30){ t[kk]++; rem--; }
+      }
+      if (t.hp + t.atk + t.def + t.spd >= 60) break;
+    }
+    tuning[monId] = t;
+  }
+  return {picked, movesets, tuning, leadId};
 }
 
 function startBattle(){
@@ -758,15 +858,15 @@ function startBattle(){
   const cpuBuild = buildCPU(DB);
 
   game = { seed, rng, turn: 1, ended:false, winner:null, chart:DB.chart, typeName:DB.typeName, moveMap:DB.moveMap, monMap:DB.monMap, p1:null, p2:null };
-  game.p1 = buildTeam("p1","自分", buildState.picked, buildState.movesets, buildState.lead, DB.moveMap, DB.monMap);
-  game.p2 = buildTeam("p2","CPU", cpuBuild.picked, cpuBuild.movesets, cpuBuild.leadId, DB.moveMap, DB.monMap);
+  game.p1 = buildTeam("p1","自分", buildState.picked, buildState.movesets, buildState.tuning, buildState.lead, DB.moveMap, DB.monMap);
+  game.p2 = buildTeam("p2","CPU", cpuBuild.picked, cpuBuild.movesets, cpuBuild.tuning, cpuBuild.leadId, DB.moveMap, DB.monMap);
 
   adminLog = {
     match_id: `${new Date().toISOString().slice(0,10).replaceAll("-","")}-${seed.toString(16)}`,
     seed,
     rules: { format:"3v3_single_no_preview", switch_consumes_turn:true, stab:STAB, rand_min:RAND_MIN, rand_max:RAND_MAX, ohko_accuracy:0.30 },
-    teams: { p1:{mon_ids:[...buildState.picked], lead:buildState.lead, movesets: JSON.parse(JSON.stringify(buildState.movesets))},
-             p2:{mon_ids:[...cpuBuild.picked], lead:cpuBuild.leadId, movesets: JSON.parse(JSON.stringify(cpuBuild.movesets))} },
+    teams: { p1:{mon_ids:[...buildState.picked], lead:buildState.lead, movesets: JSON.parse(JSON.stringify(buildState.movesets)), tuning: JSON.parse(JSON.stringify(buildState.tuning))},
+             p2:{mon_ids:[...cpuBuild.picked], lead:cpuBuild.leadId, movesets: JSON.parse(JSON.stringify(cpuBuild.movesets)), tuning: JSON.parse(JSON.stringify(cpuBuild.tuning))} },
     turns: [],
     result: null
   };
@@ -783,12 +883,17 @@ function renderBattle(){
 
   const o = ui.opp.active;
   document.getElementById("oppPanel").innerHTML = `
-    <div class="monLine">
-      <div>
-        <div class="monName">${o.name}</div>
-        <div class="muted small">${o.type1}${o.type2 ? " / "+o.type2 : ""}</div>
+    <div class="imgRow">
+      <img class="monImg" src="${game.p2.active().img}" alt="${o.name}">
+      <div style="flex:1">
+        <div class="monLine">
+          <div>
+            <div class="monName">${o.name}</div>
+            <div class="muted small">${o.type1}${o.type2 ? " / "+o.type2 : ""}</div>
+          </div>
+          <div class="right"><span class="badge">残り ${ui.opp.remaining}/3</span></div>
+        </div>
       </div>
-      <div class="right"><span class="badge">残り ${ui.opp.remaining}/3</span></div>
     </div>
     <div class="sep"></div>
     <div class="muted small">HP ${o.hpPct}%</div>
@@ -797,32 +902,21 @@ function renderBattle(){
 
   const m = ui.me.active;
   document.getElementById("mePanel").innerHTML = `
-    <div class="monLine">
-      <div>
-        <div class="monName">${m.name}</div>
-        <div class="muted small">${m.type1}${m.type2 ? " / "+m.type2 : ""}</div>
-      </div>
-      <div class="right"><span class="badge">残り ${ui.me.remaining}/3</span></div>
-    </div>
-    <div class="sep"></div>
-    <div class="muted small">HP ${m.hpNow} / ${m.hpMax}（${m.hpPct}%）</div>
-    <div class="hpbar"><div style="width:${m.hpPct}%"></div></div>
-    <div class="sep"></div>
-    <div class="muted">控え</div>
-    <div class="grid2" style="margin-top:8px">
-      ${ui.me.bench.map(b => `
-        <div class="builderMon">
-          <div class="monLine">
-            <div>
-              <div class="monName">${b.name}${b.fainted ? "（戦闘不能）":""}</div>
-              <div class="muted small">${b.type1}${b.type2 ? " / "+b.type2 : ""}</div>
-            </div>
-            <div class="badge">${b.hpPct}%</div>
+    <div class="imgRow">
+      <img class="monImg" src="${game.p1.active().img}" alt="${m.name}">
+      <div style="flex:1">
+        <div class="monLine">
+          <div>
+            <div class="monName">${m.name}</div>
+            <div class="muted small">${m.type1}${m.type2 ? " / "+m.type2 : ""}</div>
           </div>
-          <div class="muted small">HP ${b.hpNow}/${b.hpMax}</div>
+          <div class="right"><span class="badge">残り ${ui.me.remaining}/3</span></div>
         </div>
-      `).join("")}
+      </div>
     </div>
+    <div class="sep"></div>
+    <div class="muted small">HP ${m.hpNow}/${m.hpMax}（${m.hpPct}%）</div>
+    <div class="hpbar"><div style="width:${m.hpPct}%"></div></div>
   `;
 
   renderCommands();
@@ -919,6 +1013,8 @@ function writeDisplayEvent(e){
   if (e.type === "use"){
     if (e.side === "p1") logLine(`自分：${e.name} の ${e.move}`);
     else logLine(`CPUが技を使った`);
+    const tgt = (e.side === "p1") ? "p2" : "p1";
+    flashPanel(tgt, e.moveType || "NONE");
   }
   if (e.type === "miss"){
     logLine(e.side === "p1" ? `自分の攻撃は外れた` : `CPUの攻撃は外れた`);

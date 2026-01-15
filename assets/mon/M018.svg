@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="22" fill="#FF6B4A"/><path d="M0 30 C40 5 80 0 128 20 L128 0 L0 0 Z" fill="white" opacity="0.20"/>
+  <circle cx="96" cy="96" r="18" fill="white" opacity="0.20"/>
+  <text x="64" y="74" text-anchor="middle" font-size="26" font-weight="800" fill="#0E1520" opacity="0.25" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif">セッカト</text>
+  <text x="64" y="72" text-anchor="middle" font-size="26" font-weight="800" fill="#ffffff" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif">セッカト</text>
+</svg>

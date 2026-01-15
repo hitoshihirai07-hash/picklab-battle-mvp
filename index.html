@@ -6,40 +6,50 @@
   <title>Pick Lab 対戦・選出シミュレーター（MVP）</title>
   <style>
     :root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
-    body{margin:0;background:#0b0d10;color:#e9eef5}
-    header{padding:14px 16px;border-bottom:1px solid #1a2230;display:flex;align-items:center;gap:12px}
+    body{margin:0;background:#f6f7fb;color:#1c2430}
+    header{padding:14px 16px;border-bottom:1px solid #e5e8f0;display:flex;align-items:center;gap:12px;background:white;position:sticky;top:0;z-index:5}
     header h1{font-size:16px;margin:0}
-    header .pill{font-size:12px;padding:4px 10px;border:1px solid #2a3a52;border-radius:999px;color:#bcd1ff}
+    header .pill{font-size:12px;padding:4px 10px;border:1px solid #d8def0;border-radius:999px;color:#2b5cff;background:#f1f5ff}
     main{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:14px}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .card{background:#0f141c;border:1px solid #1a2230;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-    .card h2{font-size:13px;margin:0 0 10px 0;color:#cfe0ff;letter-spacing:.02em}
-    .muted{color:#9fb0c8;font-size:12px}
+    .card{background:#ffffff;border:1px solid #e5e8f0;border-radius:14px;padding:14px;box-shadow:0 10px 25px rgba(17,24,39,.08)}
+    .card h2{font-size:13px;margin:0 0 10px 0;color:#2b5cff;letter-spacing:.02em}
+    .muted{color:#586579;font-size:12px}
     .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
     .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-    .btn{cursor:pointer;border:1px solid #263247;background:#121a26;color:#e9eef5;border-radius:12px;padding:10px 12px;font-weight:600}
-    .btn:hover{filter:brightness(1.06)}
-    .btn:disabled{opacity:.45;cursor:not-allowed}
-    .btnPrimary{border-color:#2b5cff}
+    .btn{cursor:pointer;border:1px solid #d6dbea;background:#ffffff;color:#1c2430;border-radius:12px;padding:10px 12px;font-weight:700}
+    .btn:hover{filter:brightness(0.98);background:#f6f8ff}
+    .btn:disabled{opacity:.50;cursor:not-allowed}
+    .btnPrimary{border-color:#2b5cff;background:#2b5cff;color:white}
+    .btnPrimary:hover{filter:brightness(0.98);background:#2452e8}
     .tag{display:inline-flex;align-items:center;gap:6px}
-    .tag b{font-weight:700}
-    .badge{font-size:11px;padding:2px 8px;border:1px solid #2a3a52;border-radius:999px;color:#cde0ff}
-    .hpbar{height:8px;background:#1a2230;border-radius:999px;overflow:hidden}
-    .hpbar>div{height:100%;background:#77aaff}
-    .monLine{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-    .monName{font-weight:800}
+    .tag b{font-weight:800}
+    .badge{font-size:11px;padding:2px 8px;border:1px solid #d8def0;border-radius:999px;color:#2b5cff;background:#f1f5ff}
+    .hpbar{height:10px;background:#eef1f7;border-radius:999px;overflow:hidden}
+    .hpbar>div{height:100%;background:#2b5cff}
+    .monLine{display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .monName{font-weight:900}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-    .log{height:260px;overflow:auto;background:#0b0f16;border:1px solid #1a2230;border-radius:12px;padding:10px;font-size:12px;line-height:1.35}
-    .sep{height:1px;background:#1a2230;margin:10px 0}
-    .builderMon{border:1px solid #1a2230;border-radius:12px;padding:10px;background:#0b0f16}
-    select, input[type="radio"]{accent-color:#77aaff}
-    select{width:100%;padding:8px;border-radius:10px;border:1px solid #263247;background:#0b0f16;color:#e9eef5}
-    label{font-size:12px;color:#cfe0ff}
+    .log{height:260px;overflow:auto;background:#f7f9ff;border:1px solid #e5e8f0;border-radius:12px;padding:10px;font-size:12px;line-height:1.45}
+    .sep{height:1px;background:#e5e8f0;margin:10px 0}
+    .builderMon{border:1px solid #e5e8f0;border-radius:12px;padding:10px;background:#fbfcff}
+    select, input[type="radio"], input[type="number"]{accent-color:#2b5cff}
+    select{width:100%;padding:8px;border-radius:10px;border:1px solid #d6dbea;background:white;color:#1c2430}
+    input[type="number"]{width:100%;padding:8px;border-radius:10px;border:1px solid #d6dbea;background:white;color:#1c2430}
+    label{font-size:12px;color:#2b5cff;font-weight:700}
     .small{font-size:11px}
     .right{display:flex;gap:8px;align-items:center}
-    .k{color:#9fb0c8}
+    .k{color:#6b778c}
     .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .hidden{display:none !important}
+    .imgRow{display:flex;gap:10px;align-items:center}
+    .monImg{width:48px;height:48px;border-radius:12px;border:1px solid #e5e8f0;background:white;flex:0 0 auto}
+    .fxFlash{animation:fxflash .35s ease-out 1}
+    @keyframes fxflash{
+      0%{transform:translateY(0);box-shadow:0 0 0 rgba(0,0,0,0)}
+      35%{transform:translateY(-1px);box-shadow:0 0 0 6px rgba(43,92,255,.18)}
+      100%{transform:translateY(0);box-shadow:0 0 0 rgba(0,0,0,0)}
+    }
   </style>
 </head>
 <body>
