@@ -531,7 +531,7 @@ function maskForUI(state){
 const elSetup = document.getElementById("setup");
 const elBattle = document.getElementById("battle");
 const elRoster = document.getElementById("roster");
-const elDexList = document.getElementById(\"dexList\");
+const elDexList = document.getElementById("dexList");
 const elMoveIndex = document.getElementById("moveIndex");
 const elMovesets = document.getElementById("movesets");
 const elLeadPick = document.getElementById("leadPick");
