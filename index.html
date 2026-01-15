@@ -87,6 +87,13 @@
 
     /* move info: 1行にして高さを削る */
     .moveSelInfo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+
+
+    /* roster controls should take full width */
+    #roster > .flex{width:100%}
+    /* keep roster controls visible while scrolling the roster list */
+    #step1{position:relative}
+    #step1 summary{position:sticky;top:0;background:#fff;z-index:3;padding:6px 0}
 </style>
 </head>
 <body>
@@ -110,7 +117,7 @@
     <details id="step1" open>
       <summary>1) 手持ち（3体えらぶ）</summary>
       <div class="sep"></div>
-      <div id="roster" class="grid3"></div>
+      <div id="roster"></div>
     </details>
 
     <details id="step2">
