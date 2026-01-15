@@ -742,18 +742,6 @@ function buildCPU(DB){
   return {picked, movesets, leadId};
 }
 
-let game = null;
-let adminLog = null;
-
-function clearLog(){ document.getElementById("log").innerHTML = ""; }
-function logLine(s){
-  const elLog = document.getElementById("log");
-  const div = document.createElement("div");
-  div.textContent = s;
-  elLog.appendChild(div);
-  elLog.scrollTop = elLog.scrollHeight;
-}
-
 function startBattle(){
   const seed = nowSeed();
   const rng = mulberry32(seed);
