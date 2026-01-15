@@ -57,6 +57,25 @@
     @media (max-width: 520px){
       .grid3{grid-template-columns:1fr}
     }
+
+
+    /* --- Compact setup: details/summary --- */
+    details{border:1px solid #e5e8f0;border-radius:14px;padding:10px 12px;background:#fff}
+    details + details{margin-top:10px}
+    summary{cursor:pointer;font-weight:900;list-style:none}
+    summary::-webkit-details-marker{display:none}
+    summary:after{content:"▾";float:right;color:#586579}
+    details[open] summary:after{content:"▴"}
+
+    /* --- Prevent vertical "1文字ずつ折り返し" --- */
+    .builderMon{min-width:0}
+    .imgRow > div{min-width:0}
+    .monLine > div:first-child{flex:1;min-width:0}
+    .monName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .muted.small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* move info: 1行にして高さを削る */
+    .moveSelInfo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
 </style>
 </head>
 <body>

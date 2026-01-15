@@ -938,9 +938,28 @@ function countTeamOHKO(){
   return c;
 }
 
+
+function openStepsIfNeeded(){
+  const d2 = document.getElementById("step2");
+  const d3 = document.getElementById("step3");
+  if (buildState?.picked?.length === 3 && d2) d2.open = true;
+
+  // if all moves are set for the 3 mons, open step3
+  if (buildState?.picked?.length === 3 && d3){
+    let ok = true;
+    for (const monId of buildState.picked){
+      const ms = buildState.movesets?.[monId];
+      if (!ms || ms.length < 4 || ms.some(x=>!x)){ ok = false; break; }
+    }
+    if (ok) d3.open = true;
+  }
+}
+
 function validateStart(){
   const btnStart = document.getElementById("btnStart");
   if (!btnStart) return;
+
+  openStepsIfNeeded();
 
   // need 3 mons
   if (buildState.picked.length !== 3){ btnStart.disabled = true; return; }
