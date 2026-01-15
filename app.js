@@ -225,25 +225,35 @@ function bestAttack(state, atkF, defF){
 }
 
 function pickSupportMove(state, cpuF, oppF){
-  const has = (id)=> cpuF.moves4.includes(id) && cpuF.pp[id] > 0;
+  // フラグ/効果で判定（データ追加してもCPUが使えるようにする）
+  const pickBy = (pred) => cpuF.moves4.find(id => cpuF.pp[id] > 0 && pred(state.moveMap[id]));
+  const guardId = pickBy(m => m.flags.includes("GUARD"));
+  const healId  = pickBy(m => m.flags.includes("HEAL"));
+  const defUpId = pickBy(m => m.flags.includes("BUFF") && /^DEF:\+\d+/.test(m.effect));
+  const atkUpId = pickBy(m => m.flags.includes("BUFF") && /^ATK:\+\d+/.test(m.effect));
+  const spdUpId = pickBy(m => m.flags.includes("BUFF") && /^SPD:\+\d+/.test(m.effect));
+  const defDnId = pickBy(m => m.flags.includes("DEBUFF") && /^DEF:-\d+/.test(m.effect));
+  const spdDnId = pickBy(m => m.flags.includes("DEBUFF") && /^SPD:-\d+/.test(m.effect));
+  const atkDnId = pickBy(m => m.flags.includes("DEBUFF") && /^ATK:-\d+/.test(m.effect));
+
   const hpRatio = cpuF.hpNow / cpuF.hpMax;
-
   const oppBest = estimateOppBestDamage(state, oppF, cpuF);
-  let bestAtk = bestAttack(state, cpuF, oppF);
 
-  const supports = [];
-  if (has("GUARD") && (oppBest >= cpuF.hpNow * 0.60 || oppF.mayHaveOHKO)) supports.push("GUARD");
-  if (has("HEAL_25") && hpRatio <= 0.45) supports.push("HEAL_25");
-  if (has("DEF_UP") && oppBest >= cpuF.hpNow * 0.45) supports.push("DEF_UP");
-  if (has("ATK_UP") && bestAtk && bestAtk.dmg < oppF.hpNow * 0.10 && oppBest < cpuF.hpNow * 0.45) supports.push("ATK_UP");
-  if (has("SPD_UP") && applyStage(cpuF.spdBase, cpuF.spdStage) < applyStage(oppF.spdBase, oppF.spdStage)) supports.push("SPD_UP");
-  if (has("DEF_DOWN")) supports.push("DEF_DOWN");
-  if (has("SPD_DOWN")) supports.push("SPD_DOWN");
+  // 優先度：GUARD > HEAL > DEF_UP > ATK_UP > SPD_UP > DEBUFF
+  if (guardId && (oppBest >= cpuF.hpNow * 0.60)) return guardId;
+  if (healId && (hpRatio <= 0.45)) return healId;
+  if (defUpId && (oppBest >= cpuF.hpNow * 0.45)) return defUpId;
 
-  const order = ["GUARD","HEAL_25","DEF_UP","ATK_UP","SPD_UP","DEF_DOWN","SPD_DOWN"];
-  for (const id of order){
-    if (supports.includes(id)) return id;
-  }
+  const bestAtk = bestAttack(state, cpuF, oppF);
+  if (atkUpId && bestAtk && (bestAtk.dmg < oppF.hpNow * 0.10) && (oppBest < cpuF.hpNow * 0.45)) return atkUpId;
+
+  if (spdUpId && (applyStage(cpuF.spdBase, cpuF.spdStage) < applyStage(oppF.spdBase, oppF.spdStage))) return spdUpId;
+
+  // デバフは“たまに”当てる役
+  if (defDnId) return defDnId;
+  if (spdDnId) return spdDnId;
+  if (atkDnId) return atkDnId;
+
   return null;
 }
 
