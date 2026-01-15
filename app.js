@@ -545,7 +545,7 @@ const elCmd = document.getElementById("cmdPanel");
 const elLog = document.getElementById("log");
 
 let DB = null;
-let buildState = { picked: [], movesets: {}, tuning: {}, filters: {monQ:"", monType:"ALL", moveQ:"", moveType:"ALL"}, lead: null };
+let buildState = { picked: [], movesets: {}, tuning: {}, filters: {rosterQ:"", rosterType:"ALL", rosterSort:"TOTAL_DESC"}, lead: null };
 let game = null;
 let adminLog = null;
 
@@ -569,56 +569,110 @@ function flashPanel(which, type){
 function clearLog(){ elLog.innerHTML = ""; }
 
 function renderRoster(){
-  // 選ぶ場所（ここはシンプルに3体選択）
-  elRoster.innerHTML = "";
-  const mons = Object.values(DB.monMap).slice().sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+  // ここは選ぶ場所（検索・タイプ・並び順）
+  if (!buildState.filters) buildState.filters = {rosterQ:"", rosterType:"ALL", rosterSort:"TOTAL_DESC"};
+  const f = buildState.filters;
 
-  for (const m of mons){
-    const checked = buildState.picked.includes(m.id);
-    const wrap = document.createElement("div");
-    wrap.className = "builderMon";
-    if (checked) wrap.style.borderColor = "#2b5cff";
+  elRoster.innerHTML = `
+    <div class="flex">
+      <input id="rosterSearch" type="text" placeholder="なまえで検索" />
+      <select id="rosterTypeSel"></select>
+      <select id="rosterSortSel">
+        <option value="TOTAL_DESC">合計：高い順</option>
+        <option value="TOTAL_ASC">合計：低い順</option>
+        <option value="NAME_ASC">なまえ順</option>
+      </select>
+      <span class="muted small">せんたく：<b>${buildState.picked.length}</b>/3</span>
+    </div>
+    <div class="sep"></div>
+    <div id="rosterGrid" class="grid3"></div>
+  `;
 
-    wrap.innerHTML = `
-      <div class="imgRow">
-        <img class="monImg" src="${m.img}" alt="${m.name}">
-        <div style="flex:1">
-          <div class="monLine">
-            <div>
-              <div class="monName">${m.name}</div>
-              <div class="muted small">${DB.typeName[m.type1]}${m.type2 && m.type2!=="NONE" ? " / "+DB.typeName[m.type2] : ""}</div>
+  const qInp = elRoster.querySelector("#rosterSearch");
+  const typeSel = elRoster.querySelector("#rosterTypeSel");
+  const sortSel = elRoster.querySelector("#rosterSortSel");
+
+  qInp.value = f.rosterQ || "";
+  sortSel.value = f.rosterSort || "TOTAL_DESC";
+
+  const typeOptions = ["ALL","FIRE","WATER","WOOD","THUNDER","ICE","ROCK","WIND","DARK","NONE"];
+  typeSel.innerHTML = typeOptions.map(t=>{
+    const label = (t==="ALL") ? "タイプ：ぜんぶ" : `タイプ：${DB.typeName[t]}`;
+    return `<option value="${t}">${label}</option>`;
+  }).join("");
+  typeSel.value = f.rosterType || "ALL";
+
+  const apply = ()=>{
+    const q = (qInp.value||"").trim();
+    const t = typeSel.value || "ALL";
+    const s = sortSel.value || "TOTAL_DESC";
+
+    let mons = Object.values(DB.monMap);
+
+    if (q) mons = mons.filter(m=>m.name.includes(q));
+    if (t !== "ALL") mons = mons.filter(m=>m.type1===t || m.type2===t);
+
+    const total = (m)=>m.hp+m.atk+m.def+m.spd;
+    if (s === "TOTAL_DESC") mons.sort((a,b)=>total(b)-total(a) || a.name.localeCompare(b.name,"ja"));
+    else if (s === "TOTAL_ASC") mons.sort((a,b)=>total(a)-total(b) || a.name.localeCompare(b.name,"ja"));
+    else mons.sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+
+    const grid = elRoster.querySelector("#rosterGrid");
+    grid.innerHTML = "";
+
+    for (const m of mons){
+      const checked = buildState.picked.includes(m.id);
+      const wrap = document.createElement("div");
+      wrap.className = "builderMon";
+      if (checked) wrap.style.borderColor = "#2b5cff";
+
+      wrap.innerHTML = `
+        <div class="imgRow">
+          <img class="monImg" src="${m.img}" alt="${m.name}">
+          <div style="flex:1">
+            <div class="monLine">
+              <div>
+                <div class="monName">${m.name}</div>
+                <div class="muted small">${DB.typeName[m.type1]}${m.type2 && m.type2!=="NONE" ? " / "+DB.typeName[m.type2] : ""}</div>
+              </div>
+              <div class="right">
+                <span class="badge mono">${total(m)}</span>
+                <input type="checkbox" ${checked ? "checked":""} />
+              </div>
             </div>
-            <div class="right">
-              <span class="badge mono">${m.hp+m.atk+m.def+m.spd}</span>
-              <input type="checkbox" ${checked ? "checked":""} />
-            </div>
+            <div class="muted small">HP ${m.hp} / こうげき ${m.atk} / ぼうぎょ ${m.def} / すばやさ ${m.spd}</div>
           </div>
-          <div class="muted small">HP ${m.hp} / こうげき ${m.atk} / ぼうぎょ ${m.def} / すばやさ ${m.spd}</div>
         </div>
-      </div>
-    `;
+      `;
 
-    const cb = wrap.querySelector("input[type=checkbox]");
-    cb.addEventListener("change", ()=>{
-      if (cb.checked){
-        if (buildState.picked.length >= 3){
-          cb.checked = false;
-          return;
+      const cb = wrap.querySelector("input[type=checkbox]");
+      cb.addEventListener("change", ()=>{
+        if (cb.checked){
+          if (buildState.picked.length >= 3){
+            cb.checked = false;
+            return;
+          }
+          buildState.picked.push(m.id);
+        } else {
+          buildState.picked = buildState.picked.filter(x=>x!==m.id);
+          delete buildState.movesets[m.id];
+          delete buildState.tuning[m.id];
+          if (buildState.lead === m.id) buildState.lead = null;
         }
-        buildState.picked.push(m.id);
-      } else {
-        buildState.picked = buildState.picked.filter(x=>x!==m.id);
-        delete buildState.movesets[m.id];
-        delete buildState.tuning[m.id];
-        if (buildState.lead === m.id) buildState.lead = null;
-      }
-      renderMovesets();
-      renderLeadPick();
-      validateStart();
-    });
+        renderMovesets();
+        renderLeadPick();
+        validateStart();
+      });
 
-    elRoster.appendChild(wrap);
-  }
+      grid.appendChild(wrap);
+    }
+  };
+
+  qInp.addEventListener("input", ()=>{ f.rosterQ = qInp.value; apply(); });
+  typeSel.addEventListener("change", ()=>{ f.rosterType = typeSel.value; apply(); });
+  sortSel.addEventListener("change", ()=>{ f.rosterSort = sortSel.value; apply(); });
+
+  apply();
 }
 
 function renderDexList(){
@@ -804,7 +858,16 @@ function renderMovesets(){
     const set = buildState.movesets[monId];
     while(set.length < 4) set.push("");
 
+    // 4つ選ぶ（ドロップダウン）
+    const set = buildState.movesets[monId];
+    while(set.length < 4) set.push("");
+
+    const boxSel = document.createElement("div");
+    boxSel.className = "moveSelBlock";
+
     for (let i=0;i<4;i++){
+      const cell = document.createElement("div");
+
       const sel = document.createElement("select");
       sel.innerHTML = `<option value="">わざ${i+1}：みせってい</option>` + pool.map(mv=>{
         const tag = mv.flags.includes("OHKO") ? "OHKO(30%)" : `威力${mv.power}`;
@@ -821,9 +884,26 @@ function renderMovesets(){
         }
         set[i] = v;
         validateStart();
+        renderMovesets(); // 選択表示を更新
       });
-      grid.appendChild(sel);
+
+      const info = document.createElement("div");
+      info.className = "moveSelInfo";
+      if (set[i]){
+        const mv = DB.moveMap[set[i]];
+        const tag = mv.flags.includes("OHKO") ? "OHKO(30%)" : `威力${mv.power}`;
+        info.innerHTML = `<b>${mv.name}</b> <span class="meta">（${DB.typeName[mv.type]} / ${tag} / 命中${mv.accuracy}% / PP${mv.pp} / 優先${mv.priority}）</span>`;
+      } else {
+        info.innerHTML = `<span class="meta">未設定</span>`;
+      }
+
+      cell.appendChild(sel);
+      cell.appendChild(info);
+      boxSel.appendChild(cell);
     }
+
+    grid.appendChild(boxSel);
+
     elMovesets.appendChild(box);
   }
 }
