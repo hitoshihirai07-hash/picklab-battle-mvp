@@ -858,10 +858,6 @@ function renderMovesets(){
     const set = buildState.movesets[monId];
     while(set.length < 4) set.push("");
 
-    // 4つ選ぶ（ドロップダウン）
-    const set = buildState.movesets[monId];
-    while(set.length < 4) set.push("");
-
     const boxSel = document.createElement("div");
     boxSel.className = "moveSelBlock";
 
