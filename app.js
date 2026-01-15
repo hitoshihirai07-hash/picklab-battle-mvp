@@ -531,6 +531,7 @@ function maskForUI(state){
 const elSetup = document.getElementById("setup");
 const elBattle = document.getElementById("battle");
 const elRoster = document.getElementById("roster");
+const elMoveIndex = document.getElementById(\"moveIndex\");
 const elMovesets = document.getElementById("movesets");
 const elLeadPick = document.getElementById("leadPick");
 const btnStart = document.getElementById("btnStart");
@@ -543,7 +544,7 @@ const elCmd = document.getElementById("cmdPanel");
 const elLog = document.getElementById("log");
 
 let DB = null;
-let buildState = { picked: [], movesets: {}, tuning: {}, lead: null };
+let buildState = { picked: [], movesets: {}, tuning: {}, activeSlot: {}, filters: {monQ:"", monType:"ALL", moveQ:"", moveType:"ALL"}, lead: null };
 let game = null;
 let adminLog = null;
 
@@ -567,15 +568,56 @@ function flashPanel(which, type){
 function clearLog(){ elLog.innerHTML = ""; }
 
 function renderRoster(){
-  elRoster.innerHTML = "";
-  const mons = Object.values(DB.monMap);
+  if (!buildState.filters) buildState.filters = {monQ:"", monType:"ALL", moveQ:"", moveType:"ALL"};
+  const f = buildState.filters;
+
+  // UI shell
+  elRoster.innerHTML = `
+    <div class="flex">
+      <input id="monSearch" type="text" placeholder="なまえで検索" />
+      <select id="monTypeSel"></select>
+      <span class="muted small">せんたく：<b>${buildState.picked.length}</b>/3</span>
+    </div>
+    <div class="sep"></div>
+    <div id="monList" class="grid3"></div>
+  `;
+
+  const typeSel = elRoster.querySelector("#monTypeSel");
+  const qInp = elRoster.querySelector("#monSearch");
+  qInp.value = f.monQ || "";
+
+  const typeOptions = ["ALL","FIRE","WATER","WOOD","THUNDER","ICE","ROCK","WIND","DARK","NONE"];
+  typeSel.innerHTML = typeOptions.map(t=>{
+    const label = (t==="ALL") ? "タイプ：ぜんぶ" : `タイプ：${DB.typeName[t]}`;
+    return `<option value="${t}">${label}</option>`;
+  }).join("");
+  typeSel.value = f.monType || "ALL";
+
+  qInp.addEventListener("input", ()=>{ f.monQ = qInp.value; renderRoster(); });
+  typeSel.addEventListener("change", ()=>{ f.monType = typeSel.value; renderRoster(); });
+
+  const list = elRoster.querySelector("#monList");
+  const q = (f.monQ||"").trim();
+
+  let mons = Object.values(DB.monMap);
+  if (q){
+    mons = mons.filter(m=>m.name.includes(q));
+  }
+  if (f.monType && f.monType !== "ALL"){
+    const t = f.monType;
+    mons = mons.filter(m => m.type1===t || m.type2===t);
+  }
+  mons.sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+
   for (const m of mons){
+    const picked = buildState.picked.includes(m.id);
     const wrap = document.createElement("div");
     wrap.className = "builderMon";
-    const checked = buildState.picked.includes(m.id);
+    if (picked) wrap.style.borderColor = "#2b5cff";
+
     wrap.innerHTML = `
       <div class="imgRow">
-        <img class="monImg" src="./assets/mon/${m.id}.svg" alt="${m.name}">
+        <img class="monImg" src="${m.img}" alt="${m.name}">
         <div style="flex:1">
           <div class="monLine">
             <div>
@@ -584,29 +626,96 @@ function renderRoster(){
             </div>
             <div class="right">
               <span class="badge mono">${m.hp+m.atk+m.def+m.spd}</span>
-              <input type="checkbox" ${checked ? "checked":""} />
+              <button class="btn ${picked ? "" : "btnPrimary"}" style="padding:7px 10px">${picked ? "はずす" : "えらぶ"}</button>
             </div>
           </div>
-          <div class="muted small">HP ${m.hp} / ATK ${m.atk} / DEF ${m.def} / SPD ${m.spd}</div>
+          <div class="muted small">HP ${m.hp} / こうげき ${m.atk} / ぼうぎょ ${m.def} / すばやさ ${m.spd}</div>
         </div>
       </div>
     `;
-    const cb = wrap.querySelector("input[type=checkbox]");
-    cb.addEventListener("change", ()=>{
-      if (cb.checked){
-        if (buildState.picked.length >= 3){ cb.checked = false; return; }
-        buildState.picked.push(m.id);
-      } else {
+
+    const btn = wrap.querySelector("button");
+    btn.addEventListener("click", ()=>{
+      if (picked){
         buildState.picked = buildState.picked.filter(x=>x!==m.id);
         delete buildState.movesets[m.id];
+        delete buildState.tuning[m.id];
+        delete buildState.activeSlot[m.id];
         if (buildState.lead === m.id) buildState.lead = null;
+      } else {
+        if (buildState.picked.length >= 3) return;
+        buildState.picked.push(m.id);
       }
+      renderRoster();
+  renderMoveIndex();
       renderMovesets();
       renderLeadPick();
       validateStart();
     });
-    elRoster.appendChild(wrap);
+
+    list.appendChild(wrap);
   }
+}
+
+function renderMoveIndex(){
+  if (!elMoveIndex) return;
+  if (!buildState.filters) buildState.filters = {monQ:"", monType:"ALL", moveQ:"", moveType:"ALL"};
+  const f = buildState.filters;
+
+  elMoveIndex.innerHTML = `
+    <div class="flex">
+      <input id="moveSearch" type="text" placeholder="わざで検索" />
+      <select id="moveTypeSel"></select>
+      <span class="muted small">${Object.keys(DB.moveMap).length}わざ</span>
+    </div>
+    <div class="sep"></div>
+    <div id="moveList" class="log"></div>
+  `;
+
+  const qInp = elMoveIndex.querySelector("#moveSearch");
+  const typeSel = elMoveIndex.querySelector("#moveTypeSel");
+  qInp.value = f.moveQ || "";
+
+  const typeOptions = ["ALL","FIRE","WATER","WOOD","THUNDER","ICE","ROCK","WIND","DARK","NONE"];
+  typeSel.innerHTML = typeOptions.map(t=>{
+    const label = (t==="ALL") ? "タイプ：ぜんぶ" : `タイプ：${DB.typeName[t]}`;
+    return `<option value="${t}">${label}</option>`;
+  }).join("");
+  typeSel.value = f.moveType || "ALL";
+
+  qInp.addEventListener("input", ()=>{ f.moveQ = qInp.value; renderMoveIndex(); });
+  typeSel.addEventListener("change", ()=>{ f.moveType = typeSel.value; renderMoveIndex(); });
+
+  const q = (f.moveQ||"").trim();
+  const t = f.moveType || "ALL";
+  let rows = Object.values(DB.moveMap);
+  if (q) rows = rows.filter(m=>m.name.includes(q));
+  if (t !== "ALL") rows = rows.filter(m=>m.type === t);
+  rows.sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+
+  const toFlags = (m)=>{
+    const flags = [];
+    if (m.flags.includes("OHKO")) flags.push("OHKO(30%)");
+    if (m.flags.includes("GUARD")) flags.push("ガード");
+    if (m.flags.includes("PIERCE")) flags.push("つらぬき");
+    if (m.flags.includes("BUFF")) flags.push("つよくする");
+    if (m.flags.includes("DEBUFF")) flags.push("よわくする");
+    return flags.join(" / ");
+  };
+
+  const line = (m)=>{
+    const pow = (m.flags.includes("OHKO")) ? "—" : m.power;
+    const acc = m.accuracy;
+    const pri = Number(m.priority||0);
+    const meta = `威力${pow} / 命中${acc}% / PP${m.pp} / 優先${pri}`;
+    const flags = toFlags(m);
+    return `<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 2px;border-bottom:1px dashed #e5e8f0">
+      <div><b>${m.name}</b> <span class="badge">${DB.typeName[m.type]}</span> <span class="muted small">${flags ? "・"+flags : ""}</span></div>
+      <div class="muted small mono">${meta}</div>
+    </div>`;
+  };
+
+  elMoveIndex.querySelector("#moveList").innerHTML = rows.map(line).join("") || `<div class="muted small">該当なし</div>`;
 }
 
 function renderMovesets(){
@@ -614,7 +723,7 @@ function renderMovesets(){
   for (const monId of buildState.picked){
     const mon = DB.monMap[monId];
     const pool = (DB.learnset[monId] ?? []).map(id => DB.moveMap[id]).sort((a,b)=>a.name.localeCompare(b.name,"ja"));
-    if (!buildState.movesets[monId]) buildState.movesets[monId] = [];
+    if (!buildState.movesets[monId]) buildState.movesets[monId] = ["","","",""];
 
     const box = document.createElement("div");
     box.className = "builderMon";
@@ -630,9 +739,9 @@ function renderMovesets(){
       <div class="muted small"><b>調整ポイント（努力値の代わり）</b>：合計80まで / 1つ40まで（各+1）</div>
       <div class="grid2" style="margin-top:8px" id="tp-${monId}">
         <div><label>HP</label><input type="number" min="0" max="40" step="1" data-tp="hp" value="0"></div>
-        <div><label>ATK</label><input type="number" min="0" max="40" step="1" data-tp="atk" value="0"></div>
-        <div><label>DEF</label><input type="number" min="0" max="40" step="1" data-tp="def" value="0"></div>
-        <div><label>SPD</label><input type="number" min="0" max="40" step="1" data-tp="spd" value="0"></div>
+        <div><label>こうげき</label><input type="number" min="0" max="40" step="1" data-tp="atk" value="0"></div>
+        <div><label>ぼうぎょ</label><input type="number" min="0" max="40" step="1" data-tp="def" value="0"></div>
+        <div><label>すばやさ</label><input type="number" min="0" max="40" step="1" data-tp="spd" value="0"></div>
       </div>
       <div class="muted small" id="tpRem-${monId}">残り：80</div>
       <div class="sep"></div>
@@ -666,17 +775,74 @@ function renderMovesets(){
     });
     refreshTP();
 
-    for(let i=0;i<4;i++){
-      const sel = document.createElement("select");
-      const current = buildState.movesets[monId][i] ?? "";
-      sel.innerHTML = `<option value="">技${i+1}（未選択）</option>` + pool.map(m=>{
-        const ohko = m.flags.includes("OHKO") ? " [OHKO]" : "";
-        const extra = m.power>0 ? ` 威力${m.power}` : (m.flags.includes("HEAL")?" 回復":m.flags.includes("GUARD")?" ガード":m.flags.includes("BUFF")?" 強化":m.flags.includes("DEBUFF")?" 弱体":m.flags.includes("COUNTER")?" 反撃":"");
-        return `<option value="${m.move_id}" ${m.move_id===current?"selected":""}>${m.name}${ohko} / ${m.type==="NONE"?"無":DB.typeName[m.type]} / 命中${m.accuracy}${extra}</option>`;
-      }).join("");
-      sel.addEventListener("change", ()=>{ buildState.movesets[monId][i] = sel.value || ""; validateStart(); });
-      grid.appendChild(sel);
+    // 4つ選ぶ（リストからクリック）
+    if (!buildState.activeSlot) buildState.activeSlot = {};
+    if (buildState.activeSlot[monId] == null) buildState.activeSlot[monId] = 0;
+    const slots = document.createElement("div");
+    slots.className = "grid2";
+    const set = buildState.movesets[monId];
+    while(set.length < 4) set.push("");
+
+    const renderSlots = ()=>{
+      slots.innerHTML = "";
+      for (let i=0;i<4;i++){
+        const cell = document.createElement("div");
+        cell.className = "flex";
+        const mvId = set[i];
+        const mvName = mvId ? DB.moveMap[mvId].name : "（みせってい）";
+        const b = document.createElement("button");
+        b.className = "btn " + (buildState.activeSlot[monId]===i ? "btnPrimary" : "");
+        b.style.flex = "1";
+        b.textContent = `わざ${i+1}：${mvName}`;
+        b.addEventListener("click", ()=>{ buildState.activeSlot[monId]=i; renderMovesets(); });
+
+        const clr = document.createElement("button");
+        clr.className = "btn";
+        clr.style.padding = "10px 10px";
+        clr.textContent = "×";
+        clr.addEventListener("click", ()=>{
+          set[i] = "";
+          validateStart();
+          renderMovesets();
+        });
+
+        cell.appendChild(b);
+        cell.appendChild(clr);
+        slots.appendChild(cell);
+      }
+    };
+    renderSlots();
+    grid.appendChild(slots);
+
+    const hint = document.createElement("div");
+    hint.className = "muted small";
+    hint.style.marginTop = "8px";
+    hint.textContent = "下の「おぼえるわざ」からクリックでセット（右の×で外す）。";
+    grid.appendChild(hint);
+
+    const list = document.createElement("div");
+    list.className = "grid3";
+    list.style.marginTop = "8px";
+    for (const mv of pool){
+      const b = document.createElement("button");
+      b.className = "btn";
+      const tag = mv.flags.includes("OHKO") ? "OHKO(30%)" : `威力${mv.power}`;
+      const meta = `${DB.typeName[mv.type]} / ${tag} / 命中${mv.accuracy}% / PP${mv.pp}`;
+      b.textContent = `${mv.name}（${meta}）`;
+      b.addEventListener("click", ()=>{
+        // 同じわざの重複はなし
+        if (set.includes(mv.id)) return;
+        const slot = buildState.activeSlot[monId] ?? 0;
+        set[slot] = mv.id;
+        // 次の空きをアクティブに
+        const next = set.findIndex(x=>!x);
+        if (next !== -1) buildState.activeSlot[monId] = next;
+        validateStart();
+        renderMovesets();
+      });
+      list.appendChild(b);
     }
+    grid.appendChild(list);
     elMovesets.appendChild(box);
   }
 }

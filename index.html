@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pick Lab 対戦・選出シミュレーター（MVP）</title>
+  <title>ピックラボ・バトル</title>
   <style>
     :root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
     body{margin:0;background:#f6f7fb;color:#1c2430}
@@ -35,7 +35,7 @@
     .builderMon{border:1px solid #e5e8f0;border-radius:12px;padding:10px;background:#fbfcff}
     select, input[type="radio"], input[type="number"]{accent-color:#2b5cff}
     select{width:100%;padding:8px;border-radius:10px;border:1px solid #d6dbea;background:white;color:#1c2430}
-    input[type="number"]{width:100%;padding:8px;border-radius:10px;border:1px solid #d6dbea;background:white;color:#1c2430}
+    input[type="number"], input[type="text"]{width:100%;padding:8px;border-radius:10px;border:1px solid #d6dbea;background:white;color:#1c2430}
     label{font-size:12px;color:#2b5cff;font-weight:700}
     .small{font-size:11px}
     .right{display:flex;gap:8px;align-items:center}
@@ -54,7 +54,7 @@
 </head>
 <body>
 <header>
-  <h1>Pick Lab <span class="pill">対戦・選出シミュレーター</span></h1>
+  <h1>ピックラボ <span class="pill">対戦・選出シミュレーター</span></h1>
   <div class="muted">3vs3 / 見せ合い無し / 交代はターン消費 / 状態異常なし / OHKO(命中30%)</div>
 </header>
 
@@ -63,8 +63,17 @@
     <h2>1) チーム選択（自分）</h2>
     <div class="muted">手持ちから3体選択 → 各体4技セット → 先発選択。相手(CPU)は内部で同様に選びます。</div>
     <div class="sep"></div>
-    <div id="roster" class="grid3"></div>
+<h2>図鑑（ここから選ぶ）</h2>
+    <div class="muted">検索・タイプで絞って3体選択。</div>
     <div class="sep"></div>
+    <div id="roster"></div>
+    <div class="sep"></div>
+    <h2>わざ一覧（確認用）</h2>
+    <div class="muted">全わざの性能一覧。実際に選べるのは各モンスターが覚えるわざだけ。</div>
+    <div class="sep"></div>
+    <div id="moveIndex"></div>
+    <div class="sep"></div>
+
     <div class="row">
       <div>
         <h2>2) 技セット（選んだ3体）</h2>
