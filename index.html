@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pick Lab 対戦・選出シミュレーター（MVP）</title>
+  <style>
+    :root{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
+    body{margin:0;background:#0b0d10;color:#e9eef5}
+    header{padding:14px 16px;border-bottom:1px solid #1a2230;display:flex;align-items:center;gap:12px}
+    header h1{font-size:16px;margin:0}
+    header .pill{font-size:12px;padding:4px 10px;border:1px solid #2a3a52;border-radius:999px;color:#bcd1ff}
+    main{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:14px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .card{background:#0f141c;border:1px solid #1a2230;border-radius:14px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{font-size:13px;margin:0 0 10px 0;color:#cfe0ff;letter-spacing:.02em}
+    .muted{color:#9fb0c8;font-size:12px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .btn{cursor:pointer;border:1px solid #263247;background:#121a26;color:#e9eef5;border-radius:12px;padding:10px 12px;font-weight:600}
+    .btn:hover{filter:brightness(1.06)}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .btnPrimary{border-color:#2b5cff}
+    .tag{display:inline-flex;align-items:center;gap:6px}
+    .tag b{font-weight:700}
+    .badge{font-size:11px;padding:2px 8px;border:1px solid #2a3a52;border-radius:999px;color:#cde0ff}
+    .hpbar{height:8px;background:#1a2230;border-radius:999px;overflow:hidden}
+    .hpbar>div{height:100%;background:#77aaff}
+    .monLine{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .monName{font-weight:800}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .log{height:260px;overflow:auto;background:#0b0f16;border:1px solid #1a2230;border-radius:12px;padding:10px;font-size:12px;line-height:1.35}
+    .sep{height:1px;background:#1a2230;margin:10px 0}
+    .builderMon{border:1px solid #1a2230;border-radius:12px;padding:10px;background:#0b0f16}
+    select, input[type="radio"]{accent-color:#77aaff}
+    select{width:100%;padding:8px;border-radius:10px;border:1px solid #263247;background:#0b0f16;color:#e9eef5}
+    label{font-size:12px;color:#cfe0ff}
+    .small{font-size:11px}
+    .right{display:flex;gap:8px;align-items:center}
+    .k{color:#9fb0c8}
+    .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .hidden{display:none !important}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Pick Lab <span class="pill">対戦・選出シミュレーター</span></h1>
+  <div class="muted">3vs3 / 見せ合い無し / 交代はターン消費 / 状態異常なし / OHKO(命中30%)</div>
+</header>
+
+<main>
+  <section id="setup" class="card">
+    <h2>1) チーム選択（自分）</h2>
+    <div class="muted">手持ちから3体選択 → 各体4技セット → 先発選択。相手(CPU)は内部で同様に選びます。</div>
+    <div class="sep"></div>
+    <div id="roster" class="grid3"></div>
+    <div class="sep"></div>
+    <div class="row">
+      <div>
+        <h2>2) 技セット（選んだ3体）</h2>
+        <div id="movesets" class="grid3"></div>
+      </div>
+      <div>
+        <h2>3) 先発</h2>
+        <div id="leadPick" class="builderMon"></div>
+        <div class="sep"></div>
+        <div class="flex">
+          <button id="btnStart" class="btn btnPrimary" disabled>対戦開始</button>
+          <button id="btnRandom" class="btn">ランダムで選ぶ</button>
+          <span class="muted small">※PvPはこのMVPでは未対応（後でサーバー化）</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="battle" class="hidden">
+    <div class="row">
+      <div class="card">
+        <h2>相手（CPU）</h2>
+        <div id="oppPanel"></div>
+      </div>
+      <div class="card">
+        <h2>自分</h2>
+        <div id="mePanel"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>コマンド</h2>
+      <div id="cmdPanel"></div>
+      <div class="sep"></div>
+      <div class="flex">
+        <button id="btnNew" class="btn">最初から</button>
+        <button id="btnExportLog" class="btn">管理者ログを書き出し（JSON）</button>
+        <span class="muted small">※相手の控え・履歴は画面にも出しません</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>ログ（表示用）</h2>
+      <div id="log" class="log mono"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="./app.js"></script>
+</body>
+</html>
